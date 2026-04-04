@@ -2,8 +2,6 @@ import pandas as pd
 import os
 import json
 
-# --- CONFIGURACIÓN DE RUTAS ---
-# Usamos rutas relativas para que funcione en las compus de tus 2 compañeros
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_RAW = os.path.join(BASE_DIR, "..", "data", "Temp_Agol_Arrests_Con_TypeA_OpenData.csv")
 DATA_PROCESSED = os.path.join(BASE_DIR, "..", "data", "arrestos_procesados.json")
@@ -35,8 +33,7 @@ def transformar_datos(df):
     # 2. Manejo de Nulos (Si no hay zona o severidad, no sirve para predecir riesgo)
     df = df.dropna(subset=['area_name', 'severity_trans', 'zipcode'])
     
-    # 3. Categorización de severidad para la IA (0=Menor, 1=Grave)
-    # Esto le ahorra trabajo al compañero de la IA
+ 
     mapeo_severidad = {'Misdemeanor': 0, 'Felony': 1}
     df['severidad_num'] = df['severity_trans'].map(mapeo_severidad).fillna(0)
     
