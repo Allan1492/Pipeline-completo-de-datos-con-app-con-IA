@@ -15,7 +15,7 @@ def get_db_connection():
     db_name = os.getenv("DB_NAME", "TempeArrestsDB") # Valor por defecto si no existe
 
     if not mongo_uri:
-        print("❌ Error: No se encontró 'MONGO_URI' en el archivo .env")
+        print("Error: No se encontró 'MONGO_URI' en el archivo .env")
         return None
 
     try:
@@ -25,15 +25,15 @@ def get_db_connection():
         # Forzamos una llamada para verificar que la conexión sea real
         client.server_info() 
         
-        print(f"🔌 Conexión exitosa a la base de datos: {db_name}")
+        print(f"Conexión exitosa a la base de datos: {db_name}")
         return client[db_name]
         
     except Exception as e:
-        print(f"❌ Error de conexión a MongoDB: {e}")
+        print(f"Error de conexión a MongoDB: {e}")
         return None
 
 if __name__ == "__main__":
     # Prueba rápida de conexión
     db = get_db_connection()
     if db is not None:
-        print("✅ La base de datos está lista para recibir datos.")
+        print("La base de datos está lista para recibir los datos.")

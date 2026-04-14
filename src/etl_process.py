@@ -1,70 +1,64 @@
 import pandas as pd
 import os
-from src.database import get_db_connection  # Conexión centralizada
+import json
 
-def extraer_datos_desde_mongo():
-    """Extrae los datos crudos directamente desde el clúster de Atlas."""
+# --- CONFIGURACIÓN DE RUTAS ---
+# Usamos rutas relativas
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_RAW = os.path.join(BASE_DIR, "..", "data", "Temp_Agol_Arrests_Con_TypeA_OpenData.csv")
+DATA_PROCESSED = os.path.join(BASE_DIR, "..", "data", "arrestos_procesados.json")
+
+def extraer_datos(ruta_archivo):
+    """Se lee el CSV original filtrando solo las columnas necesarias."""
+    columnas_vitales = [
+        'arrest_dt', 'arrest_hour_of_day', 'zipcode', 'area_name', 
+        'severity_trans', 'charge', 'x_coordinate', 'y_coordinate'
+    ]
     try:
-        db = get_db_connection()
-        if db is not None:
-            coleccion = db["arrestos_tempe"] 
-            
-            # Proyección: Solo traemos lo que la IA necesita (ahorra ancho de banda)
-            proyeccion = {
-                'arrest_dt': 1, 'arrest_hour_of_day': 1, 'zipcode': 1, 
-                'area_name': 1, 'severity_trans': 1, 'charge': 1, 
-                'x_coordinate': 1, 'y_coordinate': 1, '_id': 0
-            }
-            
-            cursor = coleccion.find({}, proyeccion)
-            df = pd.DataFrame(list(cursor))
-            
-            if df.empty:
-                print("⚠️ La colección está vacía. Revisa MongoDB Atlas.")
-                return None
-                
-            print(f"☁️ Datos extraídos desde MongoDB: {len(df)} filas.")
-            return df
-        return None
-    except Exception as e:
-        print(f"❌ Error al conectar con Atlas: {e}")
+        df = pd.read_csv(ruta_archivo, usecols=columnas_vitales)
+        print(f"Datos extraídos: {len(df)} filas.")
+        return df
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo en {ruta_archivo}")
         return None
 
 def transformar_datos(df):
-    """Lógica de limpieza y Feature Engineering."""
-    print("🛠️ Iniciando transformación...")
     
-    # 1. Conversión de tipos y variables temporales
+    print("Se inicia la transformación.")
+    
+    # 1. Limpiamos y extraemos características temporales
     df['arrest_dt'] = pd.to_datetime(df['arrest_dt'])
     df['dia_nombre'] = df['arrest_dt'].dt.day_name()
     df['mes'] = df['arrest_dt'].dt.month
+    df['es_fin_de_semana'] = df['arrest_dt'].dt.dayofweek >= 4 # Viernes a Domingo
     
-    # 2. Limpieza de registros incompletos
+    # 2. Eliminamos filas con datos faltantes
     df = df.dropna(subset=['area_name', 'severity_trans', 'zipcode'])
     
-    # 3. Mapeo para análisis numérico
+    # 3. Categorización de severidad
     mapeo_severidad = {'Misdemeanor': 0, 'Felony': 1}
     df['severidad_num'] = df['severity_trans'].map(mapeo_severidad).fillna(0)
     
-    print(f"✅ Transformación completa. {len(df)} registros listos.")
+    print(f"Transformación completa. Quedaron {len(df)} registros limpios.")
     return df
 
+def guardar_localmente(df, ruta_salida):
+    """Se guarda el resultado en JSON para su uso posterior."""
+    try:
+        # Creamos la carpeta data si no existe
+        os.makedirs(os.path.dirname(ruta_salida), exist_ok=True)
+        df.to_json(ruta_salida, orient='records', indent=4)
+        print(f"Archivo guardado en: {ruta_salida}")
+    except Exception as e:
+        print(f"Error al guardar: {e}")
+
 def ejecutar_pipeline_completo():
-    """Coordina el flujo: Extracción (Cloud) -> Transformación -> Retorno."""
-    # CAMBIO CLAVE: Llamamos a la función de MONGO, no a la de CSV
-    df_crudo = extraer_datos_desde_mongo() 
-    
+    """Función que coordina el proceso."""
+    df_crudo = extraer_datos(DATA_RAW)
     if df_crudo is not None:
         df_limpio = transformar_datos(df_crudo)
+        guardar_localmente(df_limpio, DATA_PROCESSED)
         return df_limpio
-    return None
 
 if __name__ == "__main__":
-    print("🚀 Iniciando el Pipeline de Datos (Cloud Mode)...")
-    resultado = ejecutar_pipeline_completo()
-    
-    if resultado is not None:
-        # Aquí podrías añadir una función para subir el resultado a una nueva colección
-        print(f"✅ Proceso finalizado con éxito. Se procesaron {len(resultado)} registros.")
-    else:
-        print("❌ El proceso terminó con errores. Verifica logs superiores.")
+    ejecutar_pipeline_completo()

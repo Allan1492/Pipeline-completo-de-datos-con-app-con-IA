@@ -1,32 +1,25 @@
 import json
-import os 
-from database import get_db_connection
+from database import get_db_connection  # Se importa la conexión
 
 def subir_json_a_mongo(ruta_json):
-    # 1. Conectamos
+    # 1. Se conecta el JSON a MongoDB
     db = get_db_connection()
     if db is None:
         return
         
-    coleccion = db["arrestos_tempe"]
+    coleccion = db["arrestos_tempe"] # Nombre de la tabla en Atlas
 
+    # 2. Se lee el JSON procesado
+    with open("arrestos_procesados.json", 'r') as f:
+        datos = json.load(f)
+
+    # 3. Subida masiva (Insert Many)
+    print(f"Subiendo {len(datos)} registros a MongoDB Atlas.")
     try:
-        with open(ruta_json, 'r', encoding='utf-8') as f:
-            datos = json.load(f)
-            
-        # 3. Subida masiva
-        print(f"⬆️ Subiendo {len(datos)} registros a MongoDB Atlas...")
-        
-     
-        
         coleccion.insert_many(datos)
-        print("✅ ¡Carga exitosa! Los datos ya están en la nube.")
-        
-    except FileNotFoundError:
-        print(f"❌ Error: No se encontró el archivo en la ruta: {ruta_json}")
+        print("Carga exitosa.")
     except Exception as e:
-        print(f"❌ Falló la subida: {e}")
+        print(f"Falló la subida: {e}")
 
 if __name__ == "__main__":
-    
-    subir_json_a_mongo("data/arrestos_procesados.json")
+    subir_json_a_mongo("arrestos_procesados.json")

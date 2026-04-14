@@ -5,14 +5,14 @@ import joblib
 import os
 from src.database import get_db_connection
 
-# 1. CONFIGURACIÓN DE PÁGINA (Debe ser el primer comando)
+
 st.set_page_config(
     page_title="Panel de Control Tempe - Alerta Temprana", 
     layout="wide", 
     page_icon="🚓"
 )
 
-# 2. CARGA DE ESTILOS CSS
+# CARGA DE ESTILOS CSS
 def local_css(file_name):
     if os.path.exists(file_name):
         with open(file_name) as f:
@@ -20,7 +20,7 @@ def local_css(file_name):
 
 local_css("assets/style.css")
 
-# 3. CARGA DE DATOS
+# CARGA DE DATOS
 @st.cache_data(ttl=3600)
 def load_data():
     try:
